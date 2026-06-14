@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Optimizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="app">
+
+        <!-- Header -->
+        <header class="header">
+            <div class="header-inner">
+                <div class="logo">
+                    <span class="logo-mark">🔴♾️</span>
+                    <span class="logo-text">Prompt Optimizer</span>
+                </div>
+                <p class="header-sub">Turn rough ideas into structured, high-quality AI prompts</p>
+            </div>
+        </header>
+
+        <!-- Stepper -->
+        <div class="stepper-wrap">
+            <div class="stepper">
+                <div class="step active" id="step-1-indicator">
+                    <div class="step-dot"><span>1</span></div>
+                    <div class="step-label">Input</div>
+                </div>
+                <div class="step-line" id="line-1"></div>
+                <div class="step" id="step-2-indicator">
+                    <div class="step-dot"><span>2</span></div>
+                    <div class="step-label">Refine</div>
+                </div>
+                <div class="step-line" id="line-2"></div>
+                <div class="step" id="step-3-indicator">
+                    <div class="step-dot"><span>3</span></div>
+                    <div class="step-label">Result</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Card -->
+        <main class="card">
+
+            <!-- Loader -->
+            <div class="loader-wrap" id="loaderContainer">
+                <div class="spinner"></div>
+                <p class="loader-title" id="loaderText">Analyzing your prompt...</p>
+                <p class="loader-sub" id="loaderSubText">Running heuristic diagnostics</p>
+            </div>
+
+            <!-- Step 1 -->
+            <div class="step-content active" id="step-1-content">
+
+                <div class="field">
+                    <label for="initialPrompt">What do you want the AI to do?</label>
+                    <p class="field-hint">Write a rough draft or describe your task briefly.</p>
+                    <textarea id="initialPrompt" placeholder="e.g., write a Python function that sorts a list of dictionaries by a key..."></textarea>
+                </div>
+
+                <div class="field">
+                    <label>Task Category</label>
+                    <p class="field-hint">Select a category or let us detect it from your prompt.</p>
+                    <div class="cat-grid" id="categoryGrid">
+                        <button class="cat-btn selected" data-category="auto">✨ Auto-Detect</button>
+                        <button class="cat-btn" data-category="code">💻 Coding</button>
+                        <button class="cat-btn" data-category="web">🌐 Web Dev</button>
+                        <button class="cat-btn" data-category="study">📖 Study / Explain</button>
+                        <button class="cat-btn" data-category="writing">✍️ Assignment</button>
+                        <button class="cat-btn" data-category="project">🚀 Project / Idea</button>
+                    </div>
+                </div>
+
+                <!-- AI Settings Drawer -->
+                <div class="drawer" id="settingsPanel">
+                    <button class="drawer-toggle" onclick="toggleSettings()">
+                        <span>⚙️ AI Settings <span class="drawer-hint">(optional)</span></span>
+                        <span class="drawer-arrow" id="drawerArrow">▸</span>
+                    </button>
+                    <div class="drawer-body" id="drawerBody">
+                        <div class="field" style="margin-bottom: 0.75rem;">
+                            <label for="apiKey" style="font-size: 0.85rem;">ollama on local host</label>
+                            <input type="text" id="apiKey" placeholder="AIzaSy...">
+                            <p class="field-hint">Stored in your browser only. Never sent to our servers.</p>
+                        </div>
+                        <label class="checkbox-row">
+                            <input type="checkbox" id="refineWithGemini" checked>
+                            <span>Enable AI refinement via ollama{AI}</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="action-row right">
+                    <button class="btn btn-primary" id="btnNext1" onclick="goToStep2()" disabled>
+                        Analyze Prompt →
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Step 2 -->
+            <div class="step-content" id="step-2-content">
+                <div class="step-header">
+                    <h2>Clarify your prompt</h2>
+                    <p class="field-hint">Select the options that best describe what you need.</p>
+                </div>
+
+                <div id="questionsContainer"></div>
+
+                <div class="action-row between">
+                    <button class="btn btn-ghost" onclick="backToStep1()">← Back</button>
+                    <button class="btn btn-accent" id="btnGenerate" onclick="generateFinalPrompt()">Generate Prompt ⚡</button>
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="step-content" id="step-3-content">
+                <div class="step-header">
+                    <h2>Your optimized prompt</h2>
+                    <p class="field-hint">Copy and paste directly into ChatGPT, Gemini, or any AI model.</p>
+                </div>
+
+                <div class="alert-error" id="geminiErrorContainer" style="display:none;">
+                    <strong>AI Warning:</strong> <span id="geminiErrorMsg"></span>
+                </div>
+
+                <div class="results" id="resultsGrid">
+
+                    <div class="result-card" id="assembledCard">
+                        <div class="result-head">
+                            <span class="result-tag">🛠 Structured Prompt</span>
+                            <button class="copy-btn" onclick="copyPrompt('assembledPromptContent')">Copy</button>
+                        </div>
+                        <pre class="result-body" id="assembledPromptContent"></pre>
+                    </div>
+
+                    <div class="result-card result-ai" id="refinedCard">
+                        <div class="result-head">
+                            <span class="result-tag ai-tag">✨ AI Refined Prompt</span>
+                            <button class="copy-btn" onclick="copyPrompt('refinedPromptContent')">Copy</button>
+                        </div>
+                        <pre class="result-body" id="refinedPromptContent"></pre>
+                    </div>
+
+                </div>
+
+                <div class="explain-panel" id="explanationPanel" style="display:none;">
+                    <p class="explain-label">🧠 What improved in your prompt</p>
+                    <div class="result-body explain-body" id="explanationContent"></div>
+                </div>
+
+                <div class="action-row left" style="margin-top: 2rem;">
+                    <button class="btn btn-ghost" onclick="restartWizard()">↺ Start over</button>
+                </div>
+            </div>
+
+        </main>
+
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">Copied to clipboard</div>
+
+    <script>
+        let currentStep = 1;
+        let selectedCategory = 'auto';
+        let questionData = null;
+        let originalPrompt = '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('gemini_api_key');
+            if (savedKey) document.getElementById('apiKey').value = savedKey;
+
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedCategory = btn.getAttribute('data-category');
+                });
+            });
+
+            const promptInput = document.getElementById('initialPrompt');
+            const btnNext = document.getElementById('btnNext1');
+            promptInput.addEventListener('input', () => {
+                btnNext.disabled = promptInput.value.trim().length < 5;
+            });
+        });
+
+        function toggleSettings() {
+            const body = document.getElementById('drawerBody');
+            const arrow = document.getElementById('drawerArrow');
+            const isOpen = body.style.display === 'block';
+            body.style.display = isOpen ? 'none' : 'block';
+            arrow.textContent = isOpen ? '▸' : '▾';
+        }
+
+        function updateStepper(step) {
+            currentStep = step;
+            [1, 2, 3].forEach(i => {
+                const el = document.getElementById(`step-${i}-indicator`);
+                el.classList.remove('active', 'done');
+                if (i < step) el.classList.add('done');
+                else if (i === step) el.classList.add('active');
+            });
+            const l1 = document.getElementById('line-1');
+            const l2 = document.getElementById('line-2');
+            if (step >= 2) l1.classList.add('filled'); else l1.classList.remove('filled');
+            if (step >= 3) l2.classList.add('filled'); else l2.classList.remove('filled');
+        }
+
+        function showStep(step) {
+            document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(`step-${step}-content`).classList.add('active');
+        }
+
+        async function goToStep2() {
+            originalPrompt = document.getElementById('initialPrompt').value.trim();
+            const apiKey = document.getElementById('apiKey').value.trim();
+            if (apiKey) localStorage.setItem('gemini_api_key', apiKey);
+            else localStorage.removeItem('gemini_api_key');
+
+            document.getElementById('step-1-content').classList.remove('active');
+            setLoader('Analyzing your prompt...', 'Detecting category and building questions');
+            document.getElementById('loaderContainer').style.display = 'flex';
+
+            try {
+                const res = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: originalPrompt, category: selectedCategory })
+                });
+                if (!res.ok) throw new Error((await res.json()).error || 'Analysis failed');
+                questionData = await res.json();
+                renderQuestions(questionData.questions);
+                document.getElementById('loaderContainer').style.display = 'none';
+                updateStepper(2);
+                showStep(2);
+            } catch (err) {
+                document.getElementById('loaderContainer').style.display = 'none';
+                document.getElementById('step-1-content').classList.add('active');
+                alert('Error: ' + err.message);
+            }
+        }
+
+        function backToStep1() {
+            updateStepper(1);
+            showStep(1);
+        }
+
+        function setLoader(title, sub) {
+            document.getElementById('loaderText').innerText = title;
+            document.getElementById('loaderSubText').innerText = sub;
+        }
+
+        function renderQuestions(questions) {
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = '';
+            questions.forEach(q => {
+                const item = document.createElement('div');
+                item.className = 'q-item';
+
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.id = `ans-${q.id}`;
+                hidden.value = q.options[0] || '';
+
+                const lbl = document.createElement('p');
+                lbl.className = 'q-label';
+                lbl.innerText = q.text;
+
+                const optRow = document.createElement('div');
+                optRow.className = 'opt-row';
+
+                q.options.forEach((opt, idx) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'opt-btn' + (idx === 0 ? ' selected' : '');
+                    btn.innerText = opt;
+                    btn.addEventListener('click', () => {
+                        optRow.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+                        btn.classList.add('selected');
+                        hidden.value = opt;
+                    });
+                    optRow.appendChild(btn);
+                });
+
+                item.appendChild(hidden);
+                item.appendChild(lbl);
+                item.appendChild(optRow);
+                container.appendChild(item);
+            });
+        }
+
+        async function generateFinalPrompt() {
+            const answers = {};
+            questionData.questions.forEach(q => {
+                const el = document.getElementById(`ans-${q.id}`);
+                if (el) answers[q.id] = el.value;
+            });
+
+            const refine = document.getElementById('refineWithGemini').checked;
+            const apiKey = document.getElementById('apiKey').value.trim();
+
+            document.getElementById('step-2-content').classList.remove('active');
+            setLoader('Building your prompt...', refine ? 'Sending to Gemini for refinement...' : 'Formatting structure...');
+            document.getElementById('loaderContainer').style.display = 'flex';
+
+            try {
+                const res = await fetch('/api/build', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: originalPrompt, answers, refine, api_key: apiKey })
+                });
+                if (!res.ok) throw new Error((await res.json()).error || 'Build failed');
+                const result = await res.json();
+
+                document.getElementById('assembledPromptContent').innerText = result.assembled_prompt;
+
+                const errContainer = document.getElementById('geminiErrorContainer');
+                if (result.gemini_error) {
+                    errContainer.style.display = 'block';
+                    document.getElementById('geminiErrorMsg').innerText = result.gemini_error;
+                } else {
+                    errContainer.style.display = 'none';
+                }
+
+                const refinedCard = document.getElementById('refinedCard');
+                const explainPanel = document.getElementById('explanationPanel');
+
+                if (result.refined_prompt) {
+                    refinedCard.style.display = 'flex';
+                    document.getElementById('refinedPromptContent').innerText = result.refined_prompt;
+                    if (result.explanation) {
+                        explainPanel.style.display = 'block';
+                        document.getElementById('explanationContent').innerText = result.explanation;
+                    } else {
+                        explainPanel.style.display = 'none';
+                    }
+                    document.getElementById('resultsGrid').classList.add('two-col');
+                } else {
+                    refinedCard.style.display = 'none';
+                    explainPanel.style.display = 'none';
+                    document.getElementById('resultsGrid').classList.remove('two-col');
+                }
+
+                document.getElementById('loaderContainer').style.display = 'none';
+                updateStepper(3);
+                showStep(3);
+            } catch (err) {
+                document.getElementById('loaderContainer').style.display = 'none';
+                document.getElementById('step-2-content').classList.add('active');
+                alert('Error: ' + err.message);
+            }
+        }
+
+        function copyPrompt(id) {
+            navigator.clipboard.writeText(document.getElementById(id).innerText).then(() => {
+                const t = document.getElementById('toast');
+                t.classList.add('show');
+                setTimeout(() => t.classList.remove('show'), 2000);
+            });
+        }
+
+        function restartWizard() {
+            document.getElementById('initialPrompt').value = '';
+            document.getElementById('btnNext1').disabled = true;
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+            document.querySelector('[data-category="auto"]').classList.add('selected');
+            selectedCategory = 'auto';
+            updateStepper(1);
+            showStep(1);
+        }
+    </script>
+</body>
+</html>
