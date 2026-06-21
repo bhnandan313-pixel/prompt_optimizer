@@ -25,7 +25,7 @@ def enhance_prompt(assembled_prompt):
                 "system": "You are a prompt engineering expert. Rewrite the given prompt into a clear, structured, high-quality version based on the user preferences provided.",
                 "stream": False
             },
-            timeout=30
+            timeout=90
         )
 
         data = response.json()
